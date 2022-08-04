@@ -1,8 +1,14 @@
 let express = require('express');
 let { MongoClient, ObjectId } = require('mongodb');
+let sanitizeHTML = require('sanitize-html');
 
 let app = express();
 let db;
+
+let port = process.env.PORT;
+if (port == null || port == '') {
+  port = 3000;
+}
 
 app.use(express.static('public'));
 
@@ -12,13 +18,25 @@ async function go() {
   );
   await client.connect();
   db = client.db();
-  app.listen(3000);
+  app.listen(port);
 }
 
 go();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+function passwordProtected(req, res, next) {
+  res.set('WWW-Authenticate', 'Basic realm ="Simple Todo App"');
+  console.log(req.headers.authorization);
+  if (req.headers.authorization == 'Basic bGVhcm46amF2YXNjcmlwdA==') {
+    next();
+  } else {
+    res.status(401).send('Authentication required');
+  }
+}
+
+app.use(passwordProtected);
 
 app.get('/', function (req, res) {
   db.collection('items')
@@ -79,20 +97,25 @@ app.get('/', function (req, res) {
 // Create Iteam
 
 app.post('/create-item', function (req, res) {
-  db.collection('items').insertOne(
-    { text: req.body.text },
-    function (err, info) {
-      res.json({ _id: info.insertedId, text: req.body.text });
-    }
-  );
+  let safeText = sanitizeHTML(req.body.text, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+  db.collection('items').insertOne({ text: safeText }, function (err, info) {
+    res.json({ _id: info.insertedId, text: safeText });
+  });
 });
 
 // Update item
 
 app.post('/update-item', function (req, res) {
+  let safeText = sanitizeHTML(req.body.text, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
   db.collection('items').findOneAndUpdate(
     { _id: new ObjectId(req.body.id) },
-    { $set: { text: req.body.text } },
+    { $set: { text: safeText } },
     function () {
       res.send('Success');
     }
