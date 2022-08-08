@@ -1,6 +1,10 @@
-let express = require('express');
+const express = require('express');
 let { MongoClient, ObjectId } = require('mongodb');
-let sanitizeHTML = require('sanitize-html');
+
+const sanitizeHTML = require('sanitize-html');
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 let app = express();
 let db;
@@ -13,12 +17,10 @@ if (port == null || port == '') {
 app.use(express.static('public'));
 
 async function go() {
-  let client = new MongoClient(
-    'mongodb+srv://toDoAppUserAdvanced:Items231@cluster0.96x06ae.mongodb.net/ToDoApp?retryWrites=true&w=majority'
-  );
+  let client = new MongoClient(process.env.CONNECTIONSTRING);
   await client.connect();
   db = client.db();
-  app.listen(port);
+  app.listen(process.env.PORT);
 }
 
 go();
